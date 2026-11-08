@@ -65,5 +65,17 @@ def syncWeb = tasks.register('syncWeb', Sync) {
         into 'shared'
     }
     into layout.buildDirectory.dir('generated/webassets/www')
+
+    // Build-time app settings, from GitHub repository variables (see README).
+    def cfg = [
+        server      : System.getenv('HAPPYNESS_SERVER_URL') ?: '',
+        storeSafe   : (System.getenv('HAPPYNESS_STORE_SAFE') ?: '0') == '1',
+        contactEmail: System.getenv('HAPPYNESS_CONTACT_EMAIL') ?: '',
+    ]
+    inputs.property('happynessConfig', cfg.toString())
+    doLast {
+        def json = groovy.json.JsonOutput.toJson(cfg)
+        file("${destinationDir}/config.js").text = "window.HAPPYNESS_CONFIG = ${json};\n"
+    }
 }
 preBuild.dependsOn syncWeb

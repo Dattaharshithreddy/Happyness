@@ -87,6 +87,11 @@
         <label><input type="radio" name="mood" value="funny" /><span>😄 Funny</span></label>
       </fieldset>
 
+      <label class="toggle agree" id="agreeRow">
+        <input type="checkbox" name="agree" id="agreeBox" />
+        <span>I'll keep it kind and follow the <a href="terms.html" target="_blank" rel="noopener">community guidelines</a>. No hurtful, adult or private content.</span>
+      </label>
+
       <p class="form-msg" id="shareMsg" role="status"></p>
       <button class="btn primary" type="submit" id="shareSubmit">Share the joy</button>
     </form>
@@ -131,12 +136,36 @@
         <span>Text only (hide images)</span>
       </label>
 
+      <section class="account" id="accountSection" aria-labelledby="accountTitle">
+        <h3 id="accountTitle">Your account</h3>
+        <p class="hint" id="accountInfo">You haven't shared anything yet. No email or phone number needed: your account lives on this device.</p>
+        <div id="myPosts" class="mini-list"></div>
+        <div id="blockedList" class="mini-list"></div>
+        <button class="btn danger" type="button" id="deleteAccount">Delete my account and data</button>
+        <p class="links">
+          <a href="terms.html" target="_blank" rel="noopener">Community guidelines &amp; terms</a> ·
+          <a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
+        </p>
+      </section>
+
       <button class="btn primary" type="submit">Done</button>
+    </form>
+  </dialog>
+
+  <!-- Post menu -->
+  <dialog id="postMenu" class="sheet" aria-labelledby="postMenuTitle">
+    <form method="dialog" class="menu-form">
+      <div class="sheet-head">
+        <h2 id="postMenuTitle">This story</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+      </div>
+      <div id="postMenuBody" class="menu-body"></div>
     </form>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="config.js" defer></script>
   <script src="shared/joy-filter.js" defer></script>
   <script src="shared/feed-core.js" defer></script>
   <script src="shared/starter-stories.js" defer></script>

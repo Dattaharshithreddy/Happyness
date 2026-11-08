@@ -20,12 +20,28 @@
     { id: 'optimist', name: 'The Optimist Daily', url: 'https://www.optimistdaily.com/feed/', kind: 'news' },
     { id: 'reasons', name: 'Reasons to be Cheerful', url: 'https://reasonstobecheerful.world/feed/', kind: 'news' },
     { id: 'sunny', name: 'Sunny Skyz', url: 'https://www.sunnyskyz.com/rss_tebow.php', kind: 'news' },
-    { id: 'r-upliftingnews', name: 'r/UpliftingNews', url: 'https://www.reddit.com/r/UpliftingNews/top/.rss?t=day', kind: 'news' },
-    { id: 'r-mademesmile', name: 'r/MadeMeSmile', url: 'https://www.reddit.com/r/MadeMeSmile/top/.rss?t=day', kind: 'stories' },
-    { id: 'r-humansbeingbros', name: 'r/HumansBeingBros', url: 'https://www.reddit.com/r/HumansBeingBros/top/.rss?t=day', kind: 'stories' },
-    { id: 'r-aww', name: 'r/aww', url: 'https://www.reddit.com/r/aww/top/.rss?t=day', kind: 'stories' },
-    { id: 'r-wholesome', name: 'r/wholesome', url: 'https://www.reddit.com/r/wholesome/top/.rss?t=day', kind: 'stories' },
+    { id: 'r-upliftingnews', name: 'r/UpliftingNews', url: 'https://www.reddit.com/r/UpliftingNews/top/.rss?t=day', kind: 'news', personalOnly: true },
+    { id: 'r-mademesmile', name: 'r/MadeMeSmile', url: 'https://www.reddit.com/r/MadeMeSmile/top/.rss?t=day', kind: 'stories', personalOnly: true },
+    { id: 'r-humansbeingbros', name: 'r/HumansBeingBros', url: 'https://www.reddit.com/r/HumansBeingBros/top/.rss?t=day', kind: 'stories', personalOnly: true },
+    { id: 'r-aww', name: 'r/aww', url: 'https://www.reddit.com/r/aww/top/.rss?t=day', kind: 'stories', personalOnly: true },
+    { id: 'r-wholesome', name: 'r/wholesome', url: 'https://www.reddit.com/r/wholesome/top/.rss?t=day', kind: 'stories', personalOnly: true },
   ];
+
+  /**
+   * Sources allowed in a build. Store-safe builds (Play Store) leave out
+   * Reddit, whose API terms don't allow this kind of reuse without approval.
+   */
+  function sourcesFor({ storeSafe = false } = {}) {
+    return storeSafe ? SOURCES.filter((s) => !s.personalOnly) : SOURCES.slice();
+  }
+
+  /**
+   * Store-safe items show only the headline, source and a link to the
+   * original article; no copied summaries or images.
+   */
+  function makeStoreSafe(item) {
+    return Object.assign({}, item, { summary: '', image: '' });
+  }
 
   const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', hellip: '…', mdash: '—', ndash: '–', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“' };
 
@@ -188,5 +204,5 @@
     return interleave(external, community);
   }
 
-  return { SOURCES, parseFeed, filterHappy, dedupeAndSort, interleave, buildTab, hashId };
+  return { SOURCES, sourcesFor, makeStoreSafe, parseFeed, filterHappy, dedupeAndSort, interleave, buildTab, hashId };
 });

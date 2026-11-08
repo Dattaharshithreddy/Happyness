@@ -57,6 +57,11 @@ jobs:
 
       - name: Build APK
         working-directory: android
+        env:
+          # Optional repository variables (Settings → Secrets and variables → Actions → Variables)
+          HAPPYNESS_SERVER_URL: ${{ vars.HAPPYNESS_SERVER_URL }}
+          HAPPYNESS_STORE_SAFE: ${{ vars.HAPPYNESS_STORE_SAFE }}
+          HAPPYNESS_CONTACT_EMAIL: ${{ vars.HAPPYNESS_CONTACT_EMAIL }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease

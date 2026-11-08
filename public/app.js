@@ -115,7 +115,7 @@
 
   function communityCard(post) {
     const color = AVATAR_COLORS[hash(post.name) % AVATAR_COLORS.length];
-    const mine = reacted[post.id] || {};
+    const mine = post.mine || reacted[post.id] || {};
     const buttons = REACTIONS.map(([key, emoji]) => {
       const btn = el('button', {
         class: 'react',
@@ -127,8 +127,9 @@
       return btn;
     });
 
-    const reportBtn = el('button', { class: 'icon-btn more', type: 'button', title: 'Hide & report', 'aria-label': 'Hide and report this story', text: '⋯' });
-    reportBtn.addEventListener('click', () => reportPost(post, reportBtn.closest('.card')));
+    const menuBtn = el('button', { class: 'icon-btn more', type: 'button', title: 'More', 'aria-label': 'Report, block or delete', text: '⋯' });
+    menuBtn.addEventListener('click', () => openPostMenu(post, menuBtn.closest('.card')));
+    const inReview = post.status && post.status !== 'published';
 
     return el('article', { class: 'card post' },
       el('div', { class: 'post-head' },
@@ -143,7 +144,8 @@
         el('span', { class: 'pill community', text: MOODS[post.mood] || '💛 Kindness' }),
         ...buttons,
         post.starter ? el('span', { class: 'starter', text: 'starter story' }) : null,
-        reportBtn,
+        inReview ? el('span', { class: 'pill review-pill', text: '⏳ In review' }) : null,
+        menuBtn,
       ),
     );
   }
@@ -239,8 +241,8 @@
   }
 
   async function toggleReaction(post, key, btn) {
-    const mine = reacted[post.id] || (reacted[post.id] = {});
-    const on = !mine[key];
+    const mine = reacted[post.id] || (reacted[post.id] = Object.assign({}, post.mine || {}));
+    const on = btn.getAttribute('aria-pressed') !== 'true';
     const countEl = btn.querySelector('.count');
     const prev = Number(countEl.textContent) || 0;
     mine[key] = on;
@@ -248,22 +250,83 @@
     countEl.textContent = String(Math.max(0, prev + (on ? 1 : -1)));
     store.set('reacted', reacted);
     try {
-      const updated = await api.react(post.id, key, on ? 1 : -1);
+      const updated = await api.react(post.id, key, on);
       if (updated) countEl.textContent = String(updated.reactions[key]);
-    } catch { /* keep optimistic value */ }
+    } catch (err) {
+      mine[key] = !on;
+      btn.setAttribute('aria-pressed', String(!on));
+      countEl.textContent = String(prev);
+      store.set('reacted', reacted);
+      toast(err.message || 'Could not react right now');
+    }
   }
 
-  async function reportPost(post, card) {
-    if (!confirm('Hide this story and let us know it doesn\'t feel happy?')) return;
+  function fadeOut(card) {
+    if (!card) return;
     card.style.transition = 'opacity .3s, transform .3s';
     card.style.opacity = '0';
     card.style.transform = 'scale(.97)';
     setTimeout(() => card.remove(), 300);
+  }
+
+  function hideLocally(id) {
     const hidden = store.get('hidden', []);
-    hidden.push(post.id);
+    hidden.push(id);
     store.set('hidden', hidden.slice(-500));
-    try { await api.report(post.id); } catch { /* ignore */ }
-    toast('Thanks — we\'ve hidden it for you 💛');
+  }
+
+  const REPORT_REASONS = [
+    ['not_happy', 'It\'s sad or upsetting'],
+    ['unkind', 'It\'s unkind or hateful'],
+    ['adult', 'Adult or inappropriate content'],
+    ['spam', 'Spam or advertising'],
+    ['private', 'Shares someone\'s private information'],
+  ];
+
+  function openPostMenu(post, card) {
+    const dialog = $('#postMenu');
+    const body = $('#postMenuBody');
+    const item = (icon, title, sub, onclick, cls = '') => el('button', { class: `menu-btn ${cls}`, type: 'button', onclick },
+      el('span', { 'aria-hidden': 'true', text: icon }), el('span', {}, title, sub ? el('small', { text: sub }) : null));
+
+    const showMain = () => {
+      $('#postMenuTitle').textContent = 'This story';
+      const items = [];
+      if (post.own) {
+        items.push(item('🗑️', 'Delete my story', 'Remove it for everyone', async () => {
+          if (!confirm('Delete this story for everyone?')) return;
+          try { await api.deletePost(post.id); fadeOut(card); toast('Your story was deleted'); dialog.close(); } catch (err) { toast(err.message); }
+        }, 'warn'));
+      } else {
+        items.push(item('🚩', 'Report this story', 'It doesn\'t belong on Happyness', showReport));
+        if (post.authorId && !post.starter) {
+          items.push(item('🙈', `Block ${post.name}`, 'You won\'t see their stories any more', async () => {
+            try {
+              await api.block(post.authorId);
+              dialog.close();
+              toast(`${post.name} is blocked. Unblock anytime in the Mood shield.`);
+              resetFeed();
+            } catch (err) { toast(err.message); }
+          }, 'warn'));
+        }
+        items.push(item('👋', 'Hide just this story', 'Only on this device', () => { hideLocally(post.id); fadeOut(card); dialog.close(); }));
+      }
+      body.replaceChildren(...items);
+    };
+
+    const showReport = () => {
+      $('#postMenuTitle').textContent = 'What\'s wrong with it?';
+      body.replaceChildren(...REPORT_REASONS.map(([code, label]) => item('•', label, null, async () => {
+        hideLocally(post.id);
+        fadeOut(card);
+        dialog.close();
+        try { await api.report(post.id, code); } catch { /* still hidden for you */ }
+        toast('Thanks for keeping Happyness kind 💛 We\'ll take a look.');
+      })));
+    };
+
+    showMain();
+    dialog.showModal();
   }
 
   // ---------- tabs ----------
@@ -290,6 +353,11 @@
   $('#openShare').addEventListener('click', () => {
     shareMsg.textContent = '';
     shareMsg.className = 'form-msg';
+    const nameInput = shareForm.elements.name;
+    if (!nameInput.value) nameInput.value = api.accountName ? api.accountName() : '';
+    const agreed = store.get('agreed', false);
+    $('#agreeRow').hidden = agreed;
+    $('#agreeBox').checked = agreed;
     shareDialog.showModal();
     setTimeout(() => shareText.focus(), 50);
   });
@@ -314,16 +382,25 @@
     const btn = $('#shareSubmit');
     const fd = new FormData(shareForm);
     const payload = Object.fromEntries(fd.entries());
+    payload.agree = $('#agreeBox').checked;
+    if (!payload.agree) {
+      shareMsg.className = 'form-msg err';
+      shareMsg.textContent = 'Please tick the box to agree to the community guidelines.';
+      return;
+    }
     btn.disabled = true;
     shareMsg.className = 'form-msg';
     shareMsg.textContent = 'Checking for good vibes…';
     try {
       const newPost = await api.share(payload);
+      store.set('agreed', true);
+      const keepName = shareForm.elements.name.value;
       shareForm.reset();
+      shareForm.elements.name.value = keepName;
       joyFill.style.width = '0';
       joyLabel.textContent = 'Start typing ✍️';
       shareDialog.close();
-      toast('Shared! Thank you for spreading joy 🌻');
+      toast(newPost.notice || 'Shared! Thank you for spreading joy 🌻');
       if (tab === 'all' || tab === 'community' || tab === 'stories') {
         const card = communityCard(newPost);
         feedEl.prepend(card);
@@ -366,11 +443,64 @@
   });
   mutedInput.addEventListener('blur', addMuted);
 
+  function miniItem(label, extra, btnText, onclick) {
+    return el('div', { class: 'mini-item' }, el('span', { text: label }), extra,
+      btnText ? el('button', { type: 'button', text: btnText, onclick }) : null);
+  }
+
+  const STATUS = { published: 'live', pending: 'in review', hidden: 'in review' };
+
+  async function renderAccount() {
+    const info = $('#accountInfo');
+    const posts = $('#myPosts');
+    const blockedEl = $('#blockedList');
+    posts.replaceChildren();
+    blockedEl.replaceChildren();
+    let acct = null;
+    try { acct = await api.getAccount(); } catch { info.textContent = 'Couldn\'t load your account right now.'; return; }
+    if (!acct) {
+      info.textContent = 'You haven\'t shared anything yet. No email or phone number needed: your account lives on this device.';
+      return;
+    }
+    info.textContent = acct.local
+      ? 'Your stories are saved on this phone only.'
+      : `You post as “${acct.user.name}”. Your account lives on this device; no email or phone number needed.`;
+    if (acct.posts.length) {
+      posts.append(el('h4', { text: `Your stories (${acct.posts.length})` }),
+        ...acct.posts.slice(0, 10).map((p) => miniItem(p.text, el('span', { class: `status ${p.status}`, text: STATUS[p.status] || p.status }), 'Delete', async (e) => {
+          if (!confirm('Delete this story for everyone?')) return;
+          try { await api.deletePost(p.id); e.target.closest('.mini-item').remove(); resetFeed(); } catch (err) { toast(err.message); }
+        })));
+    }
+    if (acct.blocked.length) {
+      blockedEl.append(el('h4', { text: 'People you blocked' }),
+        ...acct.blocked.map((b) => miniItem(b.name, null, 'Unblock', async (e) => {
+          try { await api.unblock(b.id); e.target.closest('.mini-item').remove(); resetFeed(); } catch (err) { toast(err.message); }
+        })));
+    }
+  }
+
+  $('#deleteAccount').addEventListener('click', async () => {
+    if (!confirm('Delete your account, all your stories, reactions and reports? This cannot be undone.')) return;
+    try {
+      await api.deleteAccount();
+      ['reacted', 'hidden', 'agreed'].forEach((k) => store.set(k, k === 'agreed' ? false : k === 'reacted' ? {} : []));
+      Object.keys(reacted).forEach((k) => delete reacted[k]);
+      shareForm.elements.name.value = '';
+      toast('Your account and data were deleted 💛');
+      renderAccount();
+      resetFeed();
+    } catch (err) {
+      toast(err.message || 'Could not delete right now. Please try again.');
+    }
+  });
+
   $('#openSettings').addEventListener('click', () => {
+    renderAccount();
     renderChips();
     limitSel.value = String(store.get('limit', 48));
     hideImages.checked = settings.hideImages;
-    if (serverInput) serverInput.value = store.get('serverUrl', '');
+    if (serverInput) serverInput.value = store.get('serverUrl', '') || '';
     settingsSnapshot = JSON.stringify([settings.muted, limitSel.value, serverInput ? serverInput.value.trim() : '']);
     settingsDialog.showModal();
   });

@@ -1,6 +1,6 @@
 /* Happyness service worker: cache the app shell, keep news fresh. */
-const CACHE = 'happyness-v2';
-const SHELL = ['/', '/index.html', '/styles.css', '/api.js', '/app.js', '/icon.svg', '/manifest.webmanifest', '/shared/joy-filter.js', '/shared/feed-core.js', '/shared/starter-stories.js'];
+const CACHE = 'happyness-v3';
+const SHELL = ['/', '/index.html', '/styles.css', '/config.js', '/api.js', '/app.js', '/icon.svg', '/manifest.webmanifest', '/shared/joy-filter.js', '/shared/feed-core.js', '/shared/starter-stories.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -17,12 +17,12 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  if (url.pathname.startsWith('/api/')) {
+  if (url.pathname.startsWith('/api/') || url.pathname === '/config.js') {
     // Network first for the feed, fall back to the last copy when offline.
     e.respondWith(
       fetch(e.request)
         .then((res) => {
-          if (res.ok && url.pathname === '/api/feed') {
+          if (res.ok && (url.pathname === '/api/feed' || url.pathname === '/config.js')) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(e.request, copy));
           }

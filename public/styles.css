@@ -302,3 +302,27 @@ body.no-images .card-img { display: none; }
   z-index: 30;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- account, menus ---------- */
+.agree { align-items: flex-start; font-weight: 600; font-size: 14px; color: var(--ink-soft); }
+.agree input { margin-top: 2px; flex: none; }
+.agree a { color: var(--accent); }
+.account { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px; }
+.account h3 { margin: 0; font-family: var(--display); font-size: 19px; }
+.mini-list { display: grid; gap: 6px; }
+.mini-list:empty { display: none; }
+.mini-list h4 { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); }
+.mini-item { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 14px; font-weight: 600; }
+.mini-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-item button { border: 0; background: var(--bg-soft); border-radius: 999px; padding: 4px 10px; font-weight: 800; font-size: 13px; cursor: pointer; }
+.status { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 2px 8px; border-radius: 999px; background: var(--mint); color: var(--ink); flex: none; }
+.status.pending, .status.hidden { background: #ffefc7; color: #3b2a14; }
+.btn.danger { background: transparent; color: #c2410c; border: 1.5px solid currentColor; }
+.links { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+.links a { color: var(--accent); }
+.menu-body { display: grid; gap: 8px; }
+.menu-btn { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 14px; padding: 13px 14px; font-weight: 800; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+.menu-btn small { display: block; font-weight: 600; color: var(--ink-soft); }
+.menu-btn.warn { color: #c2410c; }
+.review-pill { background: #ffefc7; color: #3b2a14; }
+@media (prefers-color-scheme: dark) { .btn.danger, .menu-btn.warn { color: #ffb38a; } }

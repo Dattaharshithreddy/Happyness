@@ -1,0 +1,22 @@
+# One-click deploy on Render: Dashboard → New → Blueprint → pick this repo.
+# The persistent disk (needed so posts survive restarts) requires a paid
+# instance (Starter plan, about US$7/month).
+services:
+  - type: web
+    name: happyness
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    disk:
+      name: happyness-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: STORE_SAFE
+        value: "1"
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

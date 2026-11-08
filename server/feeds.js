@@ -1,6 +1,10 @@
 'use strict';
 
-const { SOURCES, parseFeed, filterHappy, dedupeAndSort } = require('../shared/feed-core');
+const { sourcesFor, makeStoreSafe, parseFeed, filterHappy, dedupeAndSort } = require('../shared/feed-core');
+
+// STORE_SAFE=1: headlines + links only, no Reddit (see README → Content).
+const STORE_SAFE = process.env.STORE_SAFE === '1';
+const SOURCES = sourcesFor({ storeSafe: STORE_SAFE });
 
 const CACHE_MS = 30 * 60 * 1000; // refresh every 30 minutes
 const FETCH_TIMEOUT_MS = 10000;
@@ -39,7 +43,9 @@ async function refresh() {
       stats[src.id] = { ok: false, error: String(r.reason && r.reason.message ? r.reason.message : r.reason) };
     }
   });
-  cache = { at: Date.now(), items: dedupeAndSort(all), stats };
+  let items = dedupeAndSort(all);
+  if (STORE_SAFE) items = items.map(makeStoreSafe);
+  cache = { at: Date.now(), items, stats };
   return cache;
 }
 
