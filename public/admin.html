@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Happyness Moderation</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .wrap { padding-bottom: 60px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 18px; }
+    .stat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; text-align: center; }
+    .stat b { display: block; font-size: 24px; font-family: var(--display); }
+    .stat span { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+    @media (max-width: 480px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .q { padding: 16px 18px; }
+    .q .why { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 8px 0 12px; overflow-wrap: anywhere; }
+    .q .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .q .actions .btn { padding: 9px 16px; font-size: 15px; }
+    .ok { background: var(--mint); }
+    .no { background: #ffe0d6; color: #7a2400; }
+    .ban { background: transparent; border: 1.5px solid #c2410c; color: #c2410c; }
+    .login { display: grid; gap: 10px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hello">
+      <h1>🛡️ Moderation</h1>
+      <p class="sub">Posts held by the AI check, hidden after reports, or reported by readers.</p>
+    </section>
+
+    <form class="login" id="login">
+      <label class="field"><span>Admin token</span><input id="token" type="password" autocomplete="current-password" placeholder="Your ADMIN_TOKEN" /></label>
+      <button class="btn primary" type="submit">Open the queue</button>
+      <p class="form-msg err" id="loginMsg" role="alert"></p>
+    </form>
+
+    <div id="panel" hidden>
+      <div class="stats" id="stats"></div>
+      <div class="feed" id="queue"></div>
+      <p class="feed-end"><button class="btn" id="refresh" type="button">Refresh</button></p>
+    </div>
+  </main>
+
+  <script>
+  (() => {
+    'use strict';
+    const $ = (s) => document.querySelector(s);
+    let token = '';
+    try { token = sessionStorage.getItem('happyness:admin') || ''; } catch (e) { /* ignore */ }
+
+    function el(tag, attrs = {}, ...kids) {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'text') n.textContent = v;
+        else if (k === 'class') n.className = v;
+        else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+        else n.setAttribute(k, v);
+      }
+      kids.flat().forEach((c) => c && n.append(c.nodeType ? c : document.createTextNode(c)));
+      return n;
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        method: opts.method || 'GET',
+        headers: { 'X-Admin-Token': token, 'Content-Type': 'application/json' },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { const e = new Error(data.error || `HTTP ${res.status}`); e.status = res.status; throw e; }
+      return data;
+    }
+
+    const STATUS = { pending: '⏳ Held by AI check', hidden: '🙈 Hidden by reports', published: '🚩 Live, but reported' };
+
+    function card(p) {
+      const act = async (path, body, msg) => {
+        if (msg && !confirm(msg)) return;
+        try { await api(path, { method: 'POST', body }); load(); } catch (e) { alert(e.message); }
+      };
+      return el('article', { class: 'card q' },
+        el('div', { class: 'meta' },
+          el('span', { class: 'pill community', text: STATUS[p.status] || p.status }),
+          el('span', { text: `${p.name}${p.place ? ' · ' + p.place : ''}` }),
+          el('span', { text: new Date(p.createdAt).toLocaleString() })),
+        el('p', { class: 'post-text', text: p.text }),
+        el('p', { class: 'why', text: [p.moderation && `Check: ${p.moderation}`, p.openReports ? `Reports (${p.openReports}): ${p.reportReasons}` : ''].filter(Boolean).join(' — ') }),
+        el('div', { class: 'actions' },
+          el('button', { class: 'btn ok', type: 'button', text: '✓ Approve', onclick: () => act(`/api/admin/posts/${p.id}`, { action: 'approve' }) }),
+          el('button', { class: 'btn no', type: 'button', text: '✕ Remove', onclick: () => act(`/api/admin/posts/${p.id}`, { action: 'remove' }) }),
+          p.userBanned || p.authorId === 'happyness' ? null : el('button', { class: 'btn ban', type: 'button', text: 'Ban author', onclick: () => act(`/api/admin/users/${p.authorId}/ban`, null, `Ban ${p.name}? All their stories will be removed.`) })));
+    }
+
+    async function load() {
+      try {
+        const { stats, queue } = await api('/api/admin/queue');
+        $('#login').hidden = true;
+        $('#panel').hidden = false;
+        $('#stats').replaceChildren(...[['People', stats.users], ['Live stories', stats.posts], ['In review', stats.inReview], ['Open reports', stats.openReports]]
+          .map(([k, v]) => el('div', { class: 'stat' }, el('b', { text: String(v) }), el('span', { text: k }))));
+        $('#queue').replaceChildren(...(queue.length ? queue.map(card) : [el('div', { class: 'caught-up', style: 'text-align:center' }, el('h3', { text: 'All clear 🌼' }), el('p', { text: 'Nothing needs your attention.' }))]));
+      } catch (e) {
+        $('#login').hidden = false;
+        $('#panel').hidden = true;
+        $('#loginMsg').textContent = e.message;
+      }
+    }
+
+    $('#login').addEventListener('submit', (e) => {
+      e.preventDefault();
+      token = $('#token').value.trim();
+      try { sessionStorage.setItem('happyness:admin', token); } catch (err) { /* ignore */ }
+      load();
+    });
+    $('#refresh').addEventListener('click', load);
+    if (token) load();
+  })();
+  </script>
+</body>
+</html>

@@ -59,7 +59,7 @@ android {
 // into the APK as assets/www so the app works without a server.
 def syncWeb = tasks.register('syncWeb', Sync) {
     from('../../public') {
-        exclude 'sw.js'
+        exclude 'sw.js', 'admin.html'
     }
     from('../../shared') {
         into 'shared'
