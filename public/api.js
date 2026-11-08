@@ -84,7 +84,7 @@
     }
 
     // --- external feed cache
-    let cache = ls.get('feedCache', { at: 0, items: [] });
+    let cache = ls.get('feedCache:v2', { at: 0, items: [] });
     let inflight = null;
 
     async function refresh() {
@@ -97,7 +97,7 @@
       } else {
         cache = { at: Date.now() - CACHE_MS + 5 * 60 * 1000, items: cache.items }; // retry in 5 min
       }
-      ls.set('feedCache', cache);
+      ls.set('feedCache:v2', cache);
       return cache;
     }
 

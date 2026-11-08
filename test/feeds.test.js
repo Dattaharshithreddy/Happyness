@@ -33,3 +33,17 @@ test('parses Atom (Reddit) feeds', () => {
   assert.match(items[0].summary, /wholesome/);
   assert.strictEqual(filterHappy(items).kept.length, 1);
 });
+
+// Real Reddit Atom feeds HTML-escape the post body (&lt;table&gt;...).
+const REDDIT_ATOM = `<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/"><entry>
+<title>Solar met 75% of the world's electricity demand growth in 2025, outpacing forecasts.</title>
+<link href="https://www.reddit.com/r/UpliftingNews/comments/abc/solar/"/><updated>2026-11-08T09:00:00+00:00</updated>
+<media:thumbnail url="https://b.thumbs.redditmedia.com/solar.jpg" />
+<content type="html">&lt;table&gt; &lt;tr&gt;&lt;td&gt; &lt;a href=&quot;https://www.reddit.com/r/UpliftingNews/comments/abc/solar/&quot;&gt; &lt;img src=&quot;https://b.thumbs.redditmedia.com/solar.jpg&quot; alt=&quot;Solar&quot; /&gt; &lt;/a&gt; &lt;/td&gt;&lt;td&gt; &amp;#32; submitted by &amp;#32; &lt;a href=&quot;https://www.reddit.com/user/someone&quot;&gt; /u/someone &lt;/a&gt; &lt;br/&gt; &lt;span&gt;&lt;a href=&quot;https://example.org/solar&quot;&gt;[link]&lt;/a&gt;&lt;/span&gt; &amp;#32; &lt;span&gt;&lt;a href=&quot;https://www.reddit.com/r/UpliftingNews/comments/abc/&quot;&gt;[comments]&lt;/a&gt;&lt;/span&gt; &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</content>
+</entry></feed>`;
+
+test('escaped HTML in Reddit posts never leaks into the summary', () => {
+  const [item] = parseFeed(REDDIT_ATOM, { id: 'r', name: 'r/UpliftingNews', kind: 'news' });
+  assert.doesNotMatch(item.summary, /[<>]|&lt;|href|submitted by/i);
+  assert.strictEqual(item.image, 'https://b.thumbs.redditmedia.com/solar.jpg');
+});

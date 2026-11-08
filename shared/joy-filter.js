@@ -50,6 +50,11 @@ const BLOCKED = [
   'tragedy', 'tragic', 'catastroph', 'devastat', 'victim',
   // outrage, politics & doom
   'election', 'trump', 'biden', 'republican', 'democrat', 'parliament', 'senate', 'congress',
+  'elected', 'elects', 'electoral', 'reelect', 're-elect', 'vote', 'voter', 'voting', 'ballot', 'polls', 'polling station',
+  'campaign trail', 'election campaign', 'candidate', 'mayor', 'governor', 'minister', 'president', 'politic', 'party leader',
+  'lawmaker', 'legislat', 'congressman', 'congresswoman', 'senator', 'mp ', 'mps', 'cabinet',
+  'government', 'administration', 'policy', 'policies', 'referendum', 'sworn in', 'inaugurat',
+  'white house', 'downing street', 'kremlin', 'tariff', 'sanction', 'gop', 'labour party', 'tory', 'bjp',
   'scandal', 'outrage', 'furious', 'slams', 'blasts', 'backlash', 'controversy', 'lawsuit',
   'layoff', 'recession', 'inflation', 'crisis', 'collapse', 'doom', 'apocalypse', 'scam', 'fraud',
   'racist', 'racism', 'hate', 'hateful', 'harass', 'bully', 'cheated', 'divorce', 'breakup',
@@ -127,7 +132,7 @@ const BLOCK_PATTERNS = BLOCKED.map((term) => ({
 
 // Short block terms that must match as whole words only (avoid "warm" -> "war",
 // "diet" -> "die", "sextet" -> "sex", "cutest" -> nothing, etc.).
-const WHOLE_WORD_ONLY = new Set(['war', 'wars', 'die', 'died', 'dies', 'dead', 'sex', 'hate', 'rip', 'xxx', 'crash', 'stab', 'kill', 'bomb', 'trump', 'scam', 'sexy']);
+const WHOLE_WORD_ONLY = new Set(['mp', 'mps', 'polls', 'gop', 'tory', 'bjp', 'war', 'wars', 'die', 'died', 'dies', 'dead', 'sex', 'hate', 'rip', 'xxx', 'crash', 'stab', 'kill', 'bomb', 'trump', 'scam', 'sexy']);
 for (const p of BLOCK_PATTERNS) {
   if (WHOLE_WORD_ONLY.has(p.term)) {
     p.re = new RegExp(`(^|[^a-z0-9])${escapeRe(p.term)}(?![a-z0-9])`, 'i');

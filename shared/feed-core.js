@@ -20,7 +20,7 @@
     { id: 'optimist', name: 'The Optimist Daily', url: 'https://www.optimistdaily.com/feed/', kind: 'news' },
     { id: 'reasons', name: 'Reasons to be Cheerful', url: 'https://reasonstobecheerful.world/feed/', kind: 'news' },
     { id: 'sunny', name: 'Sunny Skyz', url: 'https://www.sunnyskyz.com/rss_tebow.php', kind: 'news' },
-    { id: 'r-upliftingnews', name: 'r/UpliftingNews', url: 'https://www.reddit.com/r/UpliftingNews/top/.rss?t=day', kind: 'stories' },
+    { id: 'r-upliftingnews', name: 'r/UpliftingNews', url: 'https://www.reddit.com/r/UpliftingNews/top/.rss?t=day', kind: 'news' },
     { id: 'r-mademesmile', name: 'r/MadeMeSmile', url: 'https://www.reddit.com/r/MadeMeSmile/top/.rss?t=day', kind: 'stories' },
     { id: 'r-humansbeingbros', name: 'r/HumansBeingBros', url: 'https://www.reddit.com/r/HumansBeingBros/top/.rss?t=day', kind: 'stories' },
     { id: 'r-aww', name: 'r/aww', url: 'https://www.reddit.com/r/aww/top/.rss?t=day', kind: 'stories' },
@@ -45,13 +45,19 @@
   }
 
   function stripHtml(s) {
+    let text = stripCdata(s);
+    // Some feeds (e.g. Reddit) send HTML that is itself entity-encoded
+    // ("&lt;table&gt;..."). Decode it first so the tags can be removed.
+    if (/&lt;\/?[a-z!]/i.test(text)) text = decodeEntities(text);
     return decodeEntities(
-      stripCdata(s)
+      text
         .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
         .replace(/<br\s*\/?>/gi, ' ')
         .replace(/<[^>]+>/g, ' '),
     )
-      .replace(/\[link\]|\[comments\]|submitted by\s+\/u\/\S+/gi, ' ')
+      .replace(/<[^>]*>/g, ' ') // tags that only appeared after the final decode
+      .replace(/submitted\s+by\s+\/?u\/\S+/gi, ' ')
+      .replace(/\[(link|comments)\]/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }

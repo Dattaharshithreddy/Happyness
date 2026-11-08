@@ -62,3 +62,26 @@ test('user muted words are respected', () => {
   assert.ok(findBlocked('My exams went great and I am so happy', ['exams']));
   assert.strictEqual(findBlocked('My exams went great and I am so happy', ['spiders']), null);
 });
+
+test('election and politics stories are rejected even when upbeat', () => {
+  for (const text of [
+    'Three women make history as they are elected mayor in a wonderful win',
+    'Happy voters celebrate as candidate wins the governor race',
+    'Inspiring campaign brings record turnout at the ballot box',
+    'Proud new MP sworn in after a joyful victory for her party',
+    'Prime minister celebrates amazing policy success',
+  ]) {
+    assert.ok(!assess(text).ok, `expected rejection: "${text}"`);
+  }
+});
+
+test('politics words do not hide happy non-political stories', () => {
+  for (const text of [
+    "Solar met 75% of the world's electricity demand growth in 2025, a wonderful success for clean energy",
+    'Kids launch a fundraising campaign and happily donate 500 books to the library',
+    'Devoted volunteers celebrate a joyful day at the animal shelter',
+  ]) {
+    const v = assess(text);
+    assert.ok(v.ok, `expected happy: "${text}" -> ${v.reason}`);
+  }
+});
