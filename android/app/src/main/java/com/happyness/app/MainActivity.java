@@ -5,15 +5,19 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Insets;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowInsets;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 
 import org.json.JSONObject;
 
@@ -47,10 +51,19 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        int bg = Color.parseColor(isNight() ? "#1d1a16" : "#fff8ec");
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.parseColor(isNight() ? "#1d1a16" : "#fff8ec"));
+        webView.setBackgroundColor(bg);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        setContentView(webView);
+
+        // The root view paints behind the status/navigation bars, and pads the
+        // WebView so content never sits under them or under the keyboard.
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(bg);
+        root.addView(webView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(root);
+        applyEdgeToEdge(root);
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
@@ -74,6 +87,24 @@ public class MainActivity extends Activity {
         } else {
             webView.loadUrl(START_URL);
         }
+    }
+
+    /**
+     * Android 15+ draws apps edge-to-edge when they target API 35 or newer.
+     * On Android 11+ we opt in everywhere and pad for the system bars, display
+     * cutout and keyboard ourselves. Older versions keep the classic layout
+     * (the system fits the window and adjustResize handles the keyboard).
+     */
+    private void applyEdgeToEdge(View root) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return;
+        getWindow().setDecorFitsSystemWindows(false);
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsets.Type.ime());
+            v.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom));
+            return WindowInsets.CONSUMED;
+        });
+        root.requestApplyInsets();
     }
 
     /** Story links open in the user's browser, never inside the app. */

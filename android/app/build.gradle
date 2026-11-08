@@ -7,12 +7,12 @@ def buildNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
 
 android {
     namespace 'com.happyness.app'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.happyness.app'
         minSdk 24
-        targetSdk 34
+        targetSdk 36
         versionCode buildNumber
         versionName "1.0.${buildNumber}"
     }

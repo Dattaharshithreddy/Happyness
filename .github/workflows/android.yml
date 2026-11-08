@@ -64,7 +64,7 @@ jobs:
           HAPPYNESS_CONTACT_EMAIL: ${{ vars.HAPPYNESS_CONTACT_EMAIL }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon assembleRelease bundleRelease
 
       - name: Name the APK
         id: apk
@@ -72,14 +72,18 @@ jobs:
           VERSION="1.0.${GITHUB_RUN_NUMBER}"
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/Happyness-${VERSION}.apk"
+          cp android/app/build/outputs/bundle/release/app-release.aab "dist/Happyness-${VERSION}.aab"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "file=dist/Happyness-${VERSION}.apk" >> "$GITHUB_OUTPUT"
+          echo "aab=dist/Happyness-${VERSION}.aab" >> "$GITHUB_OUTPUT"
           ls -la dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: Happyness-${{ steps.apk.outputs.version }}
-          path: ${{ steps.apk.outputs.file }}
+          path: |
+            ${{ steps.apk.outputs.file }}
+            ${{ steps.apk.outputs.aab }}
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
@@ -88,7 +92,9 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Happyness for Android ${{ steps.apk.outputs.version }}
           make_latest: true
-          files: ${{ steps.apk.outputs.file }}
+          files: |
+            ${{ steps.apk.outputs.file }}
+            ${{ steps.apk.outputs.aab }}
           body: |
             🌻 **Happyness for Android**: only happy news and kind stories.
 
@@ -98,3 +104,5 @@ jobs:
             3. Tap **Install**, then open Happyness from your home screen.
 
             If installing over an older version fails, uninstall the old one first (see README → Signing).
+
+            The `.aab` file is for uploading to Google Play Console (see store/PLAY_STORE.md).
