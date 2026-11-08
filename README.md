@@ -31,6 +31,34 @@ npm test     # run the joy-filter tests
 npm run dev  # auto-restart on changes
 ```
 
+## 📱 Android app (APK)
+
+**Download:** open the [Releases page](https://github.com/Dattaharshithreddy/Happyness/releases) on your Android phone, tap the latest `Happyness-x.y.z.apk`, allow your browser to *install unknown apps*, and tap **Install**.
+
+The app works **on its own, with no server needed**. It downloads the good-news feeds on your phone and runs the same joy filter there. Your posts, reactions and Mood shield settings are saved on the phone. If you host your own Happyness server (see below), enter its address under **Mood shield → Community server**. Your stories are then shared with everyone who uses that server.
+
+### How the APK is built
+
+`.github/workflows/android.yml` builds the APK on GitHub Actions whenever `android/`, `public/` or `shared/` changes, and publishes it as a GitHub Release. You can also start it by hand from the **Actions** tab (**Build Android APK → Run workflow**).
+
+To build it yourself, you need Android Studio or the Android SDK plus JDK 17:
+
+```bash
+cd android
+./gradlew assembleRelease   # → app/build/outputs/apk/release/app-release.apk
+```
+
+The Android project (`android/`) is a small native shell (`MainActivity.java`) around the same web app. The web app (`public/` and `shared/`) is copied into the APK at build time.
+
+**Signing:** no signing key is stored in this repo. Without one, CI signs the APK with a temporary Android debug key, which changes on every build. Installing a newer build then means uninstalling the old one first, which deletes your saved posts and settings. To get smooth updates, create your own private key once:
+
+```bash
+keytool -genkeypair -keystore happyness.jks -alias happyness -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 happyness.jks   # copy the output
+```
+
+Then, in GitHub, go to **Settings → Secrets and variables → Actions** and add the secrets `ANDROID_KEYSTORE_BASE64` (the base64 output), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`happyness`) and `ANDROID_KEY_PASSWORD`. Keep `happyness.jks` safe and never commit it.
+
 ## Put it online (free options)
 
 It's a single Node app, so any Node host works: **Render**, **Railway**, **Fly.io** or a small VPS.
@@ -42,13 +70,17 @@ It's a single Node app, so any Node host works: **Render**, **Railway**, **Fly.i
 ## Project layout
 
 ```
+shared/               code used by both the server and the Android app
+  joy-filter.js       the joy filter (blocklist + positivity scoring)
+  feed-core.js        feed sources, RSS/Atom parsing, filtering, tab building
+  starter-stories.js  a few starter posts so the feed is never empty
 server/
   server.js           HTTP server + JSON API (no frameworks)
-  filter.js           the joy filter (blocklist + positivity scoring)
-  feeds.js            fetches RSS/Atom feeds, filters them, caches for 30 min
+  feeds.js            fetches the feeds, caches for 30 min
   store.js            community posts, reactions & reports (JSON file)
-  starter-stories.js  a few starter posts so the feed is never empty
-public/               the app (HTML/CSS/JS, service worker, manifest)
+public/               the web app (HTML/CSS/JS, service worker, manifest)
+  api.js              talks to the server, or runs fully on-device in the APK
+android/              Android app (WebView shell + native feed downloader)
 test/                 node:test tests
 ```
 
@@ -65,7 +97,7 @@ test/                 node:test tests
 
 ## Tuning the filter
 
-Everything lives in `server/filter.js`:
+Everything lives in `shared/joy-filter.js` (used by both the website and the Android app):
 
 - `BLOCKED`: topics that are never shown
 - `POSITIVE` / `NEGATIVE`: weighted vocabularies

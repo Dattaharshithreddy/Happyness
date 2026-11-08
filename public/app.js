@@ -17,6 +17,7 @@
     hideImages: store.get('hideImages', false),
   };
   const reacted = store.get('reacted', {}); // { postId: { smile: true } }
+  let api = window.HappyApi.create();
 
   let tab = store.get('tab', 'all');
   let page = 0;
@@ -191,11 +192,7 @@
     feedEl.append(...skel);
     endEl.replaceChildren();
     try {
-      const qs = new URLSearchParams({ tab, page: String(page) });
-      if (settings.muted.length) qs.set('muted', settings.muted.join(','));
-      const res = await fetch(`/api/feed?${qs}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await api.feed({ tab, page, muted: settings.muted });
       if (myRequest !== requestId) return; // tab switched meanwhile
       skel.forEach((s) => s.remove());
       const hidden = new Set(store.get('hidden', []));
@@ -251,15 +248,8 @@
     countEl.textContent = String(Math.max(0, prev + (on ? 1 : -1)));
     store.set('reacted', reacted);
     try {
-      const res = await fetch(`/api/posts/${encodeURIComponent(post.id)}/react`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reaction: key, delta: on ? 1 : -1 }),
-      });
-      if (res.ok) {
-        const { post: updated } = await res.json();
-        countEl.textContent = String(updated.reactions[key]);
-      }
+      const updated = await api.react(post.id, key, on ? 1 : -1);
+      if (updated) countEl.textContent = String(updated.reactions[key]);
     } catch { /* keep optimistic value */ }
   }
 
@@ -272,7 +262,7 @@
     const hidden = store.get('hidden', []);
     hidden.push(post.id);
     store.set('hidden', hidden.slice(-500));
-    try { await fetch(`/api/posts/${encodeURIComponent(post.id)}/report`, { method: 'POST' }); } catch { /* ignore */ }
+    try { await api.report(post.id); } catch { /* ignore */ }
     toast('Thanks — we\'ve hidden it for you 💛');
   }
 
@@ -311,8 +301,7 @@
     if (text.length < 8) { joyFill.style.width = '0'; joyLabel.textContent = 'Start typing ✍️'; return; }
     checkTimer = setTimeout(async () => {
       try {
-        const res = await fetch('/api/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
-        const v = await res.json();
+        const v = await api.check(text);
         const pct = v.score === null ? 4 : Math.max(6, Math.min(100, (v.score / 10) * 100));
         joyFill.style.width = `${pct}%`;
         joyLabel.textContent = v.score === null ? 'Let\'s keep it light 🌤️' : v.ok ? (v.score >= 8 ? 'Pure sunshine! 🌞' : 'Lovely! 😊') : 'Add a bit more joy ✨';
@@ -329,16 +318,14 @@
     shareMsg.className = 'form-msg';
     shareMsg.textContent = 'Checking for good vibes…';
     try {
-      const res = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not share right now.');
+      const newPost = await api.share(payload);
       shareForm.reset();
       joyFill.style.width = '0';
       joyLabel.textContent = 'Start typing ✍️';
       shareDialog.close();
       toast('Shared! Thank you for spreading joy 🌻');
       if (tab === 'all' || tab === 'community' || tab === 'stories') {
-        const card = communityCard(data.post);
+        const card = communityCard(newPost);
         feedEl.prepend(card);
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -357,6 +344,8 @@
   const limitSel = $('#dailyLimit');
   const hideImages = $('#hideImages');
   let settingsSnapshot = '';
+  const serverInput = $('#serverUrl');
+  if (window.HappyApi.isApp) $('#serverField').hidden = false;
 
   function renderChips() {
     chipsEl.replaceChildren(...settings.muted.map((word) => el('span', { class: 'chip' },
@@ -381,7 +370,8 @@
     renderChips();
     limitSel.value = String(store.get('limit', 48));
     hideImages.checked = settings.hideImages;
-    settingsSnapshot = JSON.stringify([settings.muted, limitSel.value]);
+    if (serverInput) serverInput.value = store.get('serverUrl', '');
+    settingsSnapshot = JSON.stringify([settings.muted, limitSel.value, serverInput ? serverInput.value.trim() : '']);
     settingsDialog.showModal();
   });
 
@@ -393,7 +383,16 @@
     store.set('limit', settings.limit);
     store.set('hideImages', settings.hideImages);
     document.body.classList.toggle('no-images', settings.hideImages);
-    if (JSON.stringify([settings.muted, limitSel.value]) !== settingsSnapshot) {
+    if (serverInput) {
+      let server = serverInput.value.trim().replace(/\/+$/, '');
+      if (server && !/^https?:\/\//i.test(server)) server = `https://${server}`;
+      if (server !== store.get('serverUrl', '')) {
+        store.set('serverUrl', server);
+        api = window.HappyApi.create();
+      }
+      serverInput.value = server;
+    }
+    if (JSON.stringify([settings.muted, limitSel.value, serverInput ? serverInput.value.trim() : '']) !== settingsSnapshot) {
       toast('Mood shield updated 🛡️');
       resetFeed();
     }
@@ -405,7 +404,14 @@
   document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   loadMore();
 
-  if ('serviceWorker' in navigator) {
+  // Android back button: close an open sheet first (called from the app).
+  window.happyBack = () => {
+    const open = document.querySelector('dialog[open]');
+    if (open) { open.close(); return true; }
+    return false;
+  };
+
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   }
 })();

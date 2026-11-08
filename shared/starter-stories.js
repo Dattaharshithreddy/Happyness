@@ -1,8 +1,12 @@
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.StarterStories = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
 'use strict';
 
 // A few gentle starter stories so the community feed is never empty on a
 // fresh install. They are labelled "starter story" in the app.
-module.exports = [
+return [
   { name: 'Maya', place: 'Portland', mood: 'kindness', text: 'A stranger at the coffee shop paid for my latte and left a sticky note that said "you have a lovely smile". I have been grinning all morning ☀️' },
   { name: 'Arjun', place: 'Hyderabad', mood: 'proud', text: 'My grandmother learned to send voice notes today. She sent me nine of them in a row just to say she loves me. Best morning ever 💛' },
   { name: 'Lena', place: 'Berlin', mood: 'animals', text: 'We adopted a shy senior dog from the shelter last month. Today he wagged his tail at me for the first time and then fell asleep on my feet 🐶' },
@@ -20,3 +24,4 @@ module.exports = [
   { name: 'Ravi', place: 'Bengaluru', mood: 'kindness', text: 'Left my wallet in an auto rickshaw and the driver tracked me down two hours later to return it with everything inside. Refused any reward, just smiled. Faith in humanity restored ❤️' },
   { name: 'Emma', place: 'Auckland', mood: 'funny', text: 'Asked my 5 year old what she wants to be when she grows up. She said "a happy grandma with lots of dogs". Honestly same 😄' },
 ];
+});

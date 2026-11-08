@@ -1,3 +1,7 @@
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.JoyFilter = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
 'use strict';
 
 /**
@@ -211,4 +215,5 @@ function assess(text, opts = {}) {
   return { ok: true, reason: 'uplifting', score, blocked: null };
 }
 
-module.exports = { assess, joyScore, findBlocked, normalize };
+return { assess, joyScore, findBlocked, normalize };
+});

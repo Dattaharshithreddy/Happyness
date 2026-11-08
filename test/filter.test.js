@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { assess, findBlocked } = require('../server/filter');
+const { assess, findBlocked } = require('../shared/joy-filter');
 
 const HAPPY = [
   'A stranger paid for my coffee and left a kind note. I am smiling all day!',

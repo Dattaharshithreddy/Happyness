@@ -3,12 +3,14 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { assess, findBlocked } = require('./filter');
+const { assess, findBlocked } = require('../shared/joy-filter');
 const feeds = require('./feeds');
+const { buildTab } = require('../shared/feed-core');
 const store = require('./store');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const SHARED_DIR = path.join(__dirname, '..', 'shared');
 const PAGE_SIZE = 12;
 
 const MIME = {
@@ -68,23 +70,17 @@ function clean(str, max) {
   return String(str || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
-/** Interleave news and community posts so the feed feels varied. */
-function interleave(a, b) {
-  const out = [];
-  let i = 0;
-  let j = 0;
-  while (i < a.length || j < b.length) {
-    if (i < a.length) out.push(a[i++]);
-    if (i < a.length) out.push(a[i++]);
-    if (j < b.length) out.push(b[j++]);
-  }
-  return out;
-}
-
 // ---------- API ----------
 
 async function handleApi(req, res, url) {
   const { pathname } = url;
+
+  // The Android app (and any other client) may use this server as its
+  // community server, so allow cross-origin calls. No cookies are used.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
   if (req.method === 'GET' && pathname === '/api/feed') {
     const tab = url.searchParams.get('tab') || 'all';
@@ -93,11 +89,7 @@ async function handleApi(req, res, url) {
 
     const { items: external } = await feeds.getItems();
     const community = store.listPosts();
-    let items;
-    if (tab === 'news') items = external.filter((i) => i.type === 'news');
-    else if (tab === 'stories') items = interleave(external.filter((i) => i.type === 'stories'), community);
-    else if (tab === 'community') items = community;
-    else items = interleave(external, community);
+    let items = buildTab(tab, external, community);
 
     // Personal "mood shield": hide anything containing the user's muted words.
     if (muted.length) {
@@ -173,10 +165,13 @@ async function handleApi(req, res, url) {
 // ---------- static files ----------
 
 function serveStatic(req, res, url) {
-  let rel = decodeURIComponent(url.pathname);
+  let rel;
+  try { rel = decodeURIComponent(url.pathname); } catch { return send(res, 400, 'Bad request'); }
   if (rel === '/') rel = '/index.html';
-  const file = path.normalize(path.join(PUBLIC_DIR, rel));
-  if (!file.startsWith(PUBLIC_DIR + path.sep)) return send(res, 403, 'Forbidden');
+  const base = rel.startsWith('/shared/') ? SHARED_DIR : PUBLIC_DIR;
+  if (base === SHARED_DIR) rel = rel.slice('/shared'.length);
+  const file = path.normalize(path.join(base, rel));
+  if (!file.startsWith(base + path.sep)) return send(res, 403, 'Forbidden');
   fs.readFile(file, (err, data) => {
     if (err) {
       // SPA fallback

@@ -1,6 +1,6 @@
 /* Happyness service worker: cache the app shell, keep news fresh. */
-const CACHE = 'happyness-v1';
-const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/icon.svg', '/manifest.webmanifest'];
+const CACHE = 'happyness-v2';
+const SHELL = ['/', '/index.html', '/styles.css', '/api.js', '/app.js', '/icon.svg', '/manifest.webmanifest', '/shared/joy-filter.js', '/shared/feed-core.js', '/shared/starter-stories.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Build number comes from CI (GitHub Actions) so every APK can update the last one.
+def buildNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+
+android {
+    namespace 'com.happyness.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.happyness.app'
+        minSdk 24
+        targetSdk 34
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    // Release signing uses your private key when the HAPPYNESS_KEYSTORE* environment
+    // variables are set (GitHub Actions sets them from repository secrets; see README).
+    // Without them the APK is signed with the standard Android debug key.
+    def keystorePath = System.getenv('HAPPYNESS_KEYSTORE')
+    signingConfigs {
+        if (keystorePath) {
+            release {
+                storeFile file(keystorePath)
+                storePassword System.getenv('HAPPYNESS_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('HAPPYNESS_KEY_ALIAS')
+                keyPassword System.getenv('HAPPYNESS_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystorePath ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += layout.buildDirectory.dir('generated/webassets')
+        }
+    }
+}
+
+// Bundle the web app (../../public) and the shared joy filter (../../shared)
+// into the APK as assets/www so the app works without a server.
+def syncWeb = tasks.register('syncWeb', Sync) {
+    from('../../public') {
+        exclude 'sw.js'
+    }
+    from('../../shared') {
+        into 'shared'
+    }
+    into layout.buildDirectory.dir('generated/webassets/www')
+}
+preBuild.dependsOn syncWeb
