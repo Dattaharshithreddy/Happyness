@@ -1,0 +1,16 @@
+{
+  "name": "happyness",
+  "version": "1.0.0",
+  "description": "A calm, uplifting feed that shows only happy news and kind stories from strangers.",
+  "main": "server/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

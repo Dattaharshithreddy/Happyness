@@ -1,0 +1,12 @@
+{
+  "name": "Happyness",
+  "short_name": "Happyness",
+  "description": "Only happy news and kind stories from strangers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff8ec",
+  "theme_color": "#ffb938",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
