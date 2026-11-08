@@ -6,6 +6,9 @@ on:
       - 'android/**'
       - 'public/**'
       - 'shared/**'
+      - 'server/**'
+      - 'test/**'
+      - 'package*.json'
       - '.github/workflows/android.yml'
   workflow_dispatch:
 
@@ -25,8 +28,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Run joy-filter tests
+      - name: Install server dependencies
+        run: npm ci
+
+      - name: Run tests
         run: npm test
 
       - uses: actions/setup-java@v4
