@@ -104,9 +104,12 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     @Override
     public void onBackPressed() {
-        // Let the page close an open sheet first; otherwise leave the app.
+        // Let the page close an open sheet first.
+        // Then go back from a legal page to the feed; otherwise leave the app.
         webView.evaluateJavascript("window.happyBack ? window.happyBack() : false", value -> {
-            if (!"true".equals(value)) MainActivity.super.onBackPressed();
+            if ("true".equals(value)) return;
+            if (webView.canGoBack()) webView.goBack();
+            else MainActivity.super.onBackPressed();
         });
     }
 

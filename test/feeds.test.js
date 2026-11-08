@@ -47,3 +47,13 @@ test('escaped HTML in Reddit posts never leaks into the summary', () => {
   assert.doesNotMatch(item.summary, /[<>]|&lt;|href|submitted by/i);
   assert.strictEqual(item.image, 'https://b.thumbs.redditmedia.com/solar.jpg');
 });
+
+test('store-safe mode drops Reddit and copied summaries/images', () => {
+  const { sourcesFor, makeStoreSafe } = require('../shared/feed-core');
+  const safe = sourcesFor({ storeSafe: true });
+  assert.ok(safe.length >= 4);
+  assert.ok(safe.every((s) => !/reddit\.com/.test(s.url)));
+  assert.ok(sourcesFor().some((s) => /reddit\.com/.test(s.url)));
+  const item = makeStoreSafe({ title: 'Happy news', summary: 'copied text', image: 'https://x/y.jpg', url: 'https://x' });
+  assert.deepStrictEqual([item.title, item.summary, item.image, item.url], ['Happy news', '', '', 'https://x']);
+});
